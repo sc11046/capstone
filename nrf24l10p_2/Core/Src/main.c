@@ -370,7 +370,7 @@ int main(void)
 					  {
 						  NRF24_Receive(RxData);
 					  }
-					  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+
 					  htim1.Instance->CCR3 = 80;
 					  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
 					  HAL_Delay(100);
@@ -398,7 +398,7 @@ int main(void)
 						  		  htim1.Instance->CCR2=99;
 						  	  }
 						  }
-					  // ?��로운 ?��?��?�� ?��?��
+
 
 					  if(41<=RxData[1]&&RxData[1]<=80)
 					  {
@@ -426,7 +426,7 @@ int main(void)
 						  {
 							  NRF24_Receive(RxData);
 						  }
-						  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+
 						  htim1.Instance->CCR3 = 80;
 						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
 						  HAL_Delay(100);
@@ -454,7 +454,7 @@ int main(void)
 							  		  htim1.Instance->CCR2=99;
 							  	  }
 							  }
-						  // ?��로운 ?��?��?�� ?��?��
+
 						  if(41<=RxData[1]&&RxData[1]<=85)
 						  {
 							  htim1.Instance->CCR3 = 90;
@@ -470,7 +470,7 @@ int main(void)
 
 																  }
 					  }
-					  // 중앙?���?????????????? 복�? ?���?????????????? ?�� ?���??????????????
+
 
 				  }*/
 ////////////////////////////////////////////////////////////
@@ -510,12 +510,12 @@ int main(void)
 		  				  {
 		  					  while (RxData_From_Node2[0]=='L')
 		  					  {
-		  						  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+		  						  // left motor
 		  						  htim1.Instance->CCR3 = 50;
 		  						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
 		  						  HAL_Delay(100);
 
-		  						  // ?��로운 ?��?��?�� ?��?��
+		  						  // straight
 		  						  if(RxData_From_Node2[0]=='G')
 		  						  {
 		  							  htim1.Instance->CCR3 = 90;
@@ -528,7 +528,6 @@ int main(void)
 		  							  break;
 		  						  }
 		  					  }
-		  					  // 중앙?���?????????????? 복�? ?���?????????????? ?�� ?���??????????????
 
 		  				  }
 
@@ -536,7 +535,7 @@ int main(void)
 		  					  {
 		  						  while (RxData_From_Node2[0]=='R')
 		  						  {
-		  							  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+		  							  // right motor
 		  							  htim1.Instance->CCR3 = 50;
 		  							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
 		  							  HAL_Delay(100);
