@@ -33,11 +33,14 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+uint16_t adc1,adc2;
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//#define TRIG_PIN GPIO_PIN_15
+//#define TRIG_PORT GPIOE
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,12 +49,15 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
 
 FDCAN_HandleTypeDef hfdcan1;
 
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart3;
 
@@ -75,7 +81,21 @@ int _write(int file, unsigned char * p, int len)
 HAL_UART_Transmit(&huart3, p, len, 10);
 return len;
 }
+/////////////choumpa/////
 
+/*uint32_t IC_Val1 = 0;
+uint32_t IC_Val2 = 0;
+uint32_t Difference = 0;
+uint8_t Is_First_Captured = 0;  // is the first value captured ?
+uint8_t Distance  = 0;
+*/
+enum notes {
+  C = 956,
+  D = 852,
+  E = 758,
+  F = 716,
+  G = 638
+};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,8 +105,63 @@ static void MX_SPI1_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_FDCAN1_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
+void delay (uint16_t time)
+{
+	__HAL_TIM_SET_COUNTER(&htim2, 0);
+	while (__HAL_TIM_GET_COUNTER (&htim2) < time);
+}
+///////////////choumpa///////////////
+/*void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // if the interrupt source is channel1
+	{
+		if (Is_First_Captured==0) // if the first value is not captured
+		{
+			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
+			Is_First_Captured = 1;  // set the first captured as true
+			// Now change the polarity to falling edge
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_FALLING);
+		}
 
+		else if (Is_First_Captured==1)   // if the first is already captured
+		{
+			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);  // read second value
+			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
+
+			if (IC_Val2 > IC_Val1)
+			{
+				Difference = IC_Val2-IC_Val1;
+			}
+
+			else if (IC_Val1 > IC_Val2)
+			{
+				Difference = (0xffff - IC_Val1) + IC_Val2;
+			}
+
+			Distance = Difference * .034/2;
+			Is_First_Captured = 0; // set it back to false
+
+			// set polarity to rising edge
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
+			__HAL_TIM_DISABLE_IT(&htim2, TIM_IT_CC1);
+		}
+	}
+}
+*/
+
+/*void HCSR04_Read (void)
+{
+	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_SET);  // pull the TRIG pin HIGH
+	delay(10);  // wait for 10 us
+	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_RESET);  // pull the TRIG pin low
+
+	__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_CC1);
+}*/
+////////////////
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -97,7 +172,9 @@ uint8_t data[50];
 
 FDCAN_FilterTypeDef sFilterConfig;
 FDCAN_RxHeaderTypeDef RxHeader;
-
+FDCAN_TxHeaderTypeDef TxHeader;
+uint8_t TxData_Node3_To_Node1[8];
+uint8_t TxData_Node3_To_Node2[8];
 uint8_t RxData_From_Node2[8];
 uint8_t RxData_From_Node1[8];
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
@@ -106,11 +183,12 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
    {
   if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET)
   {
-    if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData_From_Node2) != HAL_OK)
+    if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData_From_Node1) != HAL_OK)
     {
     /* Reception Error */
     Error_Handler();
     }
+
    }
    }
  }
@@ -126,7 +204,9 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+//	  HAL_StatusTypeDef HAL_ADC_Start(ADC_HandleTypeDef* hadc);
+//	  HAL_StatusTypeDef HAL_ADC_PollForConversion(ADC_HandleTypeDef* hadc, uint32_t Timeout);
+////jodo///
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -151,28 +231,35 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM1_Init();
   MX_FDCAN1_Init();
+  MX_TIM2_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-
+//////////////nrf///////////
   NRF24_Init();
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-//  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-//  htim1.Instance->CCR1=70;
-//  htim1.Instance->CCR2=70;
-//  htim1.Instance->CCR3=99;
-   NRF24_RxMode(RxAddress, 10);
-//   //  NRF24_TxMode(TxAddress, 10);
-   NRF24_ReadAll(data);
-   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14,1);
-   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, 1);
+  NRF24_RxMode(RxAddress, 10);//nrf rx
+  NRF24_ReadAll(data);//nrf rx
+////////////////////////////
 
-//	  htim1.Instance->CCR2=30;
-//	  htim1.Instance->CCR1=30;
+////////////motor///////////
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);//motor back1
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);//motor back2
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);//motor front
+  HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14,1);//motor enable1
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, 1);//motor enable2
+////////////////////////////
 
+///////////jodo///////////
+//    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//led jodo
+//////////jodo////////////
 
+///////choumpa//////////
+//  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);//choumpa
+///////////////////////
 
-
-
+//////////////buzzer/////////
+//  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  ////////////////////////
 
   /* USER CODE END 2 */
 
@@ -183,26 +270,71 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	  htim1.Instance->CCR2=30;
-//	  htim1.Instance->CCR1=30;
+//////////////choumpa//////////////
+/*  HCSR04_Read();
+  HAL_Delay(200);
+*/
+///////////////////////////////
 
-//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
-//	  HAL_Delay(1000);
+///////////////nrf//////////////
+/*	  if (isDataAvailable(2) == 1)
+	  	 {
+		  NRF24_Receive(RxData);
+	  	 }
+*/
+///////////////////////////////////
+
+//////////////////////buzzer/////////////////
+/*	  if(RxData[1]<=50)
+	  {
+	  TIM2->ARR = C;
+	  TIM2->CCR1 = TIM2->ARR / 2;
+	  HAL_Delay(RxData[1]*10);
+	  TIM2->CCR1 = 0;
+	  HAL_Delay(100);
+	  TIM2->CCR1 = TIM2->ARR / 2;
+	  TIM2->CCR1 = 0;
+	  }
 
 
-//	  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
-//	  HAL_Delay(1000);
-//	  htim1.Instance->CCR2=RxData[0];
+	  for(int i=0; i < 5; i++) {
+		  TIM2->ARR = C;
+		  TIM2->CCR1 = TIM2->ARR / 2;
+		  HAL_Delay(100);
+		  TIM2->CCR1 = 0;
+//		  HAL_Delay(100);
+//		  TIM2->CCR1 = TIM2->ARR / 2;
+//		  TIM2->CCR1 = 0;
+	  }
+*/
+///////////////////////////////////////////////
 
-	  if (isDataAvailable(2) == 1)
-	 	  {
-	 	  	NRF24_Receive(RxData);
-	 	  	}
 
-//		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5,0);
-//		   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
-//	  	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5,1);
-	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
+/////////////jodo///////////////
+/*      HAL_ADC_Start(&hadc1);
+      HAL_ADC_PollForConversion(&hadc1, 10);
+      adc1 = HAL_ADC_GetValue(&hadc1);
+      adc2 = adc1/650;
+      htim3.Instance->CCR1=adc2;
+*/
+////////////////////////////////////
+
+//////////////////can fd networking tx////////////////
+/*sprintf ((char *)TxData_Node3_To_Node1,"%d",Distance);
+     sprintf ((char *)TxData_Node3_To_Node1,"1234");
+     if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData_Node3_To_Node1)!= HAL_OK)
+               {
+
+         //Error_Handler();
+
+               }
+     HAL_Delay(200);
+     */
+//////////////////////////////////////////
+
+///////////////go and back (switch)/////////////////
+
+/*	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
 		  {
 		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
@@ -225,146 +357,211 @@ int main(void)
 		  		  htim1.Instance->CCR1=99;
 		  		  htim1.Instance->CCR2=99;
 		  	  }
-		  }
+		  }*/
 
 
+///////////////////////nrf networking and direction//////////////////
+/*
+		  if (RxData[1]  <=40)
+			  {
+				  while (RxData[1]  <= 40)
+				  {
+					  if (isDataAvailable(2) == 1)
+					  {
+						  NRF24_Receive(RxData);
+					  }
+					  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+					  htim1.Instance->CCR3 = 80;
+					  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
+					  HAL_Delay(100);
+					  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
+						  {
+						  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
+						  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
+						  htim1.Instance->CCR1=RxData[0];
+						  htim1.Instance->CCR2=RxData[0];
+						  if(RxData[0]>=100)
+						  	  {
+						  		  htim1.Instance->CCR1=99;
+						  		  htim1.Instance->CCR2=99;
+						  	  }
+						  }
+					  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
+						  {
+						  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
+						  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
+						  htim1.Instance->CCR1=RxData[0];
+						  htim1.Instance->CCR2=RxData[0];
+						  if(RxData[0]>=100)
+						  	  {
+						  		  htim1.Instance->CCR1=99;
+						  		  htim1.Instance->CCR2=99;
+						  	  }
+						  }
+					  // ?��로운 ?��?��?�� ?��?��
+
+					  if(41<=RxData[1]&&RxData[1]<=80)
+					  {
+						  htim1.Instance->CCR3 = 90;
+						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
+						  HAL_Delay(200);
+						  htim1.Instance->CCR3 = 0;
+					  }
+					  if(RxData_From_Node2[0]=='R')
+					  {
+						 htim1.Instance->CCR3 = 50;
+						 HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
+						HAL_Delay(200);
+					  }
+				  }
 
 
+			  }
 
+		  if (RxData[1] > 85)
+				  {
+					  while (RxData[1] > 85)
+					  {
+						  if (isDataAvailable(2) == 1)
+						  {
+							  NRF24_Receive(RxData);
+						  }
+						  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+						  htim1.Instance->CCR3 = 80;
+						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
+						  HAL_Delay(100);
+						  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
+							  {
+							  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
+							  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
+							  htim1.Instance->CCR1=RxData[0];
+							  htim1.Instance->CCR2=RxData[0];
+							  if(RxData[0]>=100)
+							  	  {
+							  		  htim1.Instance->CCR1=99;
+							  		  htim1.Instance->CCR2=99;
+							  	  }
+							  }
+						  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
+							  {
+							  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
+							  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
+							  htim1.Instance->CCR1=RxData[0];
+							  htim1.Instance->CCR2=RxData[0];
+							  if(RxData[0]>=100)
+							  	  {
+							  		  htim1.Instance->CCR1=99;
+							  		  htim1.Instance->CCR2=99;
+							  	  }
+							  }
+						  // ?��로운 ?��?��?�� ?��?��
+						  if(41<=RxData[1]&&RxData[1]<=85)
+						  {
+							  htim1.Instance->CCR3 = 90;
+							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
+							  HAL_Delay(200);
+							  htim1.Instance->CCR3 = 0;
+						  }
+						if(RxData_From_Node2[0]=='L')
+										  {
+											 htim1.Instance->CCR3 = 50;
+											 HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
+											HAL_Delay(200);
 
+																  }
+					  }
+					  // 중앙?���?????????????? 복�? ?���?????????????? ?�� ?���??????????????
 
+				  }*/
+////////////////////////////////////////////////////////////
 
-//	  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14,1);
-//	  HAL_Delay(200);
-//	  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14,0);
-//	  	  ,\HAL_Delay(200);
-//	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
-//	  {
-//		  if (RxData_From_Node2[0]=='L')
-//				  {
-//					  while (RxData_From_Node2[0]=='L')
-//					  {
-//						  // ?��른쪽 방향?���?????? 모터 ?��?��
-//						  htim1.Instance->CCR3 = 50;
-//						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
-//						  HAL_Delay(100);
-//
-//						  // ?��로운 ?��?��?�� ?��?��
-//						  if(RxData_From_Node2[0]=='G')
-//						  {
-//							  htim1.Instance->CCR3 = 90;
-//							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
-//							  HAL_Delay(200);
-//							  htim1.Instance->CCR3 = 0;
-//						  }
-//						  if (40<=RxData[1]&&RxData[1]<=80)
-//						  {
-//							  break;
-//						  }
-//					  }
-//					  // 중앙?���?????? 복�? ?���?????? ?�� ?���??????
-//
-//				  }
-//
-//			  if (RxData_From_Node2[0]=='R')
-//					  {
-//						  while (RxData_From_Node2[0]=='R')
-//						  {
-//							  // ?��른쪽 방향?���?????? 모터 ?��?��
-//							  htim1.Instance->CCR3 = 50;
-//							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
-//							  HAL_Delay(100);
-//
-//							  if(RxData_From_Node2[0]=='G')
-//							  {
-//								  htim1.Instance->CCR3 = 90;
-//								  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
-//								  HAL_Delay(200);
-//								  htim1.Instance->CCR3 = 0;
-//							  }
-//							  if (40<=RxData[1]&&RxData[1]<=80)
-//							  {
-//								  break;
-//							  }
-//
-//						  }
-//						  // 중앙?���?????? 복�? ?���?????? ?�� ?���??????
-//
-//					  }
-//
-//	  }
+///////////////go and back /////////////////
+/*	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
+		  	  		  {
+		  	  		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
+		  	  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
+		  	  		  htim1.Instance->CCR1=RxData[0];
+		  	  		  htim1.Instance->CCR2=RxData[0];
+		  	  		  if(RxData[0]>=100)
+		  	  		  	  {
+		  	  		  		  htim1.Instance->CCR1=99;
+		  	  		  		  htim1.Instance->CCR2=99;
+		  	  		  	  }
+		  	  		  }
+		  	  	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
+		  	  		  {
+		  	  		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
+		  	  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
+		  	  		  htim1.Instance->CCR1=RxData[0];
+		  	  		  htim1.Instance->CCR2=RxData[0];
+		  	  		  if(RxData[0]>=100)
+		  	  		  	  {
+		  	  		  		  htim1.Instance->CCR1=99;
+		  	  		  		  htim1.Instance->CCR2=99;
+		  	  		  	  }
+		  	  		  }
+*/
+////////////////////////////////////////////////////
 
-//	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
-//	  {
-//		  if (RxData[1]  <=40)
-//			  {
-//				  while (RxData[1]  <= 40)
-//				  {
-//					  // ?��른쪽 방향?���?????? 모터 ?��?��
-//					  htim1.Instance->CCR3 = 80;
-//					  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
-//					  HAL_Delay(100);
-//
-//					  // ?��로운 ?��?��?�� ?��?��
-//					  if (isDataAvailable(2) == 1)
-//					  {
-//						  NRF24_Receive(RxData);
-//					  }
-//					  if(41<=RxData[1]&&RxData[1]<=80)
-//					  {
-//						  htim1.Instance->CCR3 = 90;
-//						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
-//						  HAL_Delay(200);
-//						  htim1.Instance->CCR3 = 0;
-//					  }
-////					  if(RxData_From_Node2[0]=='R')
-////					  {
-////						 htim1.Instance->CCR3 = 50;
-////						 HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
-////						HAL_Delay(200);
-////
-////											  }
-//				  }
-//				  // 중앙?���?????? 복�? ?���?????? ?�� ?���??????
-//
-//			  }
-//
-//		  if (RxData[1] > 85)
-//				  {
-//					  while (RxData[1] > 85)
-//					  {
-//						  // ?��른쪽 방향?���?????? 모터 ?��?��
-//						  htim1.Instance->CCR3 = 80;
-//						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
-//						  HAL_Delay(100);
-//
-//
-//						  // ?��로운 ?��?��?�� ?��?��
-//						  if (isDataAvailable(2) == 1)
-//						  {
-//							  NRF24_Receive(RxData);
-//						  }
-//						  if(41<=RxData[1]&&RxData[1]<=85)
-//						  {
-//							  htim1.Instance->CCR3 = 90;
-//							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
-//							  HAL_Delay(200);
-//							  htim1.Instance->CCR3 = 0;
-//						  }
-////						if(RxData_From_Node2[0]=='L')
-////										  {
-////											 htim1.Instance->CCR3 = 50;
-////											 HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
-////											HAL_Delay(200);
-////
-////																  }
-//					  }
-//					  // 중앙?���?????? 복�? ?���?????? ?�� ?���??????
-//
-//				  }
-//	  }
+/////////////////can fd raspi and direction ////////////////////
+/*		  	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
+		  	  {
+		  		  if (RxData_From_Node2[0]=='L')
+		  				  {
+		  					  while (RxData_From_Node2[0]=='L')
+		  					  {
+		  						  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+		  						  htim1.Instance->CCR3 = 50;
+		  						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
+		  						  HAL_Delay(100);
 
-	 }
+		  						  // ?��로운 ?��?��?�� ?��?��
+		  						  if(RxData_From_Node2[0]=='G')
+		  						  {
+		  							  htim1.Instance->CCR3 = 90;
+		  							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
+		  							  HAL_Delay(200);
+		  							  htim1.Instance->CCR3 = 0;
+		  						  }
+		  						  if (40<=RxData[1]&&RxData[1]<=80)
+		  						  {
+		  							  break;
+		  						  }
+		  					  }
+		  					  // 중앙?���?????????????? 복�? ?���?????????????? ?�� ?���??????????????
+
+		  				  }
+
+		  			  if (RxData_From_Node2[0]=='R')
+		  					  {
+		  						  while (RxData_From_Node2[0]=='R')
+		  						  {
+		  							  // ?��른쪽 방향?���?????????????? 모터 ?��?��
+		  							  htim1.Instance->CCR3 = 50;
+		  							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
+		  							  HAL_Delay(100);
+
+		  							  if(RxData_From_Node2[0]=='G')
+		  							  {
+		  								  htim1.Instance->CCR3 = 90;
+		  								  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
+		  								  HAL_Delay(200);
+		  								  htim1.Instance->CCR3 = 0;
+		  							  }
+		  							  if (40<=RxData[1]&&RxData[1]<=80)
+		  							  {
+		  								  break;
+		  							  }
+
+		  						  }
+		  						  // 중앙?���?????????????? 복�? ?���?????????????? ?�� ?���??????????????
+
+		  					  }
+
+		  	  }*/
+///////////////////////////////////////////////////////////////////
+
+	}
 
 
   /* USER CODE END 3 */
@@ -387,6 +584,9 @@ void SystemClock_Config(void)
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
+  /** Macro to configure the PLL clock source
+  */
+  __HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSI);
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -424,6 +624,71 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_MultiModeTypeDef multimode = {0};
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.Resolution = ADC_RESOLUTION_16B;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc1.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
+  hadc1.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure the ADC multi-mode
+  */
+  multimode.Mode = ADC_MODE_INDEPENDENT;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  sConfig.OffsetSignedSaturation = DISABLE;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -478,7 +743,7 @@ static void MX_FDCAN1_Init(void)
         sFilterConfig.FilterIndex = 0;
         sFilterConfig.FilterType = FDCAN_FILTER_MASK; // Ignore because FDCAN_FILTER_TO_RXBUFFE
         sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-        sFilterConfig.FilterID1 = 0x11; // ID Node2
+        sFilterConfig.FilterID1 = 0; // ID Node2
         sFilterConfig.FilterID2 = 0x7ff; // Ignore because FDCAN_FILTER_TO_RXBUFFER
         sFilterConfig.RxBufferIndex = 0;
         //HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig);
@@ -496,6 +761,16 @@ static void MX_FDCAN1_Init(void)
                 /* Notification Error */
                 Error_Handler();
               }
+
+            TxHeader.Identifier = 0x33;
+            TxHeader.IdType = FDCAN_STANDARD_ID;
+            TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+            TxHeader.DataLength = FDCAN_DLC_BYTES_8;
+            TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+            TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+            TxHeader.FDFormat = FDCAN_FD_CAN;
+            TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+            TxHeader.MessageMarker = 0x0;
 
 
 
@@ -641,6 +916,124 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 128-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_DOWN;
+  htim2.Init.Period = 1000-1;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 64;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 100;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 50;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -704,6 +1097,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
@@ -716,7 +1110,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14|GPIO_PIN_0, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, ce_Pin|csn_Pin, GPIO_PIN_RESET);
@@ -745,8 +1139,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PE14 PE0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_0;
+  /*Configure GPIO pins : PE14 PE15 PE0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
