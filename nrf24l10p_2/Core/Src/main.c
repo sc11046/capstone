@@ -171,27 +171,59 @@ uint8_t RxData[32];
 uint8_t data[50];
 
 FDCAN_FilterTypeDef sFilterConfig;
+FDCAN_FilterTypeDef sFilterConfig1;
+FDCAN_FilterTypeDef sFilterConfig2;
 FDCAN_RxHeaderTypeDef RxHeader;
 FDCAN_TxHeaderTypeDef TxHeader;
-uint8_t TxData_Node3_To_Node1[8];
-uint8_t TxData_Node3_To_Node2[8];
-uint8_t RxData_From_Node2[8];
-uint8_t RxData_From_Node1[8];
+uint8_t TxData_Node3_To_Node1[16];
+uint8_t TxData_Node3_To_Node3[16];
+uint8_t RxData_From_Node3[16];
+uint8_t RxData_From_Node1[16];
+uint8_t RxData_From_Node4[8];
+
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
    if(FDCAN1 == hfdcan->Instance)
    {
-  if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET)
-  {
-    if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData_From_Node1) != HAL_OK)
-    {
-    /* Reception Error */
-    Error_Handler();
-    }
+	  if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET)
+	  {
 
+		if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData_From_Node3) != HAL_OK)
+		{
+		Error_Handler();
+		}
+
+	  }
    }
+
+ }
+void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
+{
+   if(FDCAN1 == hfdcan->Instance)
+   {
+	  if((RxFifo1ITs & FDCAN_IT_RX_FIFO1_NEW_MESSAGE) != RESET)
+	  {
+		if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO1, &RxHeader, RxData_From_Node1) != HAL_OK)
+		{
+		Error_Handler();
+		}
+
+	  }
    }
  }
+void HAL_FDCAN_RxBufferNewMessageCallback(FDCAN_HandleTypeDef *hfdcan)
+{
+
+    if (FDCAN1 == hfdcan->Instance)
+    {
+        if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_BUFFER0, &RxHeader, RxData_From_Node4) != HAL_OK)
+        {
+            Error_Handler();
+        }
+    }
+
+}
+
 
 
 
@@ -250,7 +282,7 @@ int main(void)
 ////////////////////////////
 
 ///////////jodo///////////
-//    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//led jodo
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//led jodo
 //////////jodo////////////
 
 ///////choumpa//////////
@@ -258,8 +290,10 @@ int main(void)
 ///////////////////////
 
 //////////////buzzer/////////
-//  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   ////////////////////////
+  int a[14];
+
 
   /* USER CODE END 2 */
 
@@ -270,53 +304,121 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  for(int i=0;i<11;i++)
+	  {a[i]=RxData_From_Node3[i]-'0';}
+
+	  int Distance1 = 100* a[0]  +10*a[1] +a[2];
+	  int Distance2 = 100* a[4]  +10*a[5] +a[6];
+	  int Distance3 = 100* a[8]  +10*a[9] +a[10];
+	  printf("%d",Distance1);
+
 //////////////choumpa//////////////
 /*  HCSR04_Read();
   HAL_Delay(200);
 */
 ///////////////////////////////
-
+/*	  if(HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_BUFFER1, &RxHeader, RxData_From_Node4) != HAL_OK)
+	  {
+		  Error_Handler();
+	  }
+	  HAL_Delay(100);*/
 ///////////////nrf//////////////
-/*	  if (isDataAvailable(2) == 1)
+	  if (isDataAvailable(2) == 1)
 	  	 {
 		  NRF24_Receive(RxData);
 	  	 }
-*/
+
 ///////////////////////////////////
 
 //////////////////////buzzer/////////////////
-/*	  if(RxData[1]<=50)
+
+
+ if(Distance1<=10)
 	  {
 	  TIM2->ARR = C;
 	  TIM2->CCR1 = TIM2->ARR / 2;
-	  HAL_Delay(RxData[1]*10);
+	  HAL_Delay(Distance1*10);
 	  TIM2->CCR1 = 0;
 	  HAL_Delay(100);
 	  TIM2->CCR1 = TIM2->ARR / 2;
 	  TIM2->CCR1 = 0;
+	  if(Distance1<=10)
+	  {
+		  TIM2->ARR = C;
+		  TIM2->CCR1 = TIM2->ARR / 2;
+		  TIM2->CCR1 = 0;
+		  HAL_Delay(1);
+		  TIM2->CCR1 = TIM2->ARR / 2;
+		  TIM2->CCR1 = 0;
+	  }
+	  }
+ if(Distance2<=10)
+	  {
+	  TIM2->ARR = C;
+	  TIM2->CCR1 = TIM2->ARR / 2;
+	  HAL_Delay(Distance2*10);
+	  TIM2->CCR1 = 0;
+	  HAL_Delay(100);
+	  TIM2->CCR1 = TIM2->ARR / 2;
+	  TIM2->CCR1 = 0;
+	  if(Distance2<=10)
+	  	  {
+	  		  TIM2->ARR = C;
+	  		  TIM2->CCR1 = TIM2->ARR / 2;
+	  		  TIM2->CCR1 = 0;
+	  		HAL_Delay(1);
+	  		TIM2->CCR1 = TIM2->ARR / 2;
+	  		TIM2->CCR1 = 0;
+	  	  }
+	  }
+ if(Distance3<=10)
+	  {
+	  TIM2->ARR = C;
+	  TIM2->CCR1 = TIM2->ARR / 2;
+	  HAL_Delay(Distance3*10);
+	  TIM2->CCR1 = 0;
+	  HAL_Delay(100);
+	  TIM2->CCR1 = TIM2->ARR / 2;
+	  TIM2->CCR1 = 0;
+	  if(Distance3<=10)
+	  	  {
+	  		  TIM2->ARR = C;
+	  		  TIM2->CCR1 = TIM2->ARR / 2;
+	  		  TIM2->CCR1 = 0;
+	  		HAL_Delay(1);
+	  		TIM2->CCR1 = TIM2->ARR / 2;
+	  		TIM2->CCR1 = 0;
+	  	  }
 	  }
 
 
-	  for(int i=0; i < 5; i++) {
-		  TIM2->ARR = C;
-		  TIM2->CCR1 = TIM2->ARR / 2;
-		  HAL_Delay(100);
-		  TIM2->CCR1 = 0;
+
+//	  for(int i=0; i < 5; i++) {
+//		  TIM2->ARR = C;
+//		  TIM2->CCR1 = TIM2->ARR / 2;
+//		  HAL_Delay(100);
+//		  TIM2->CCR1 = 0;
 //		  HAL_Delay(100);
 //		  TIM2->CCR1 = TIM2->ARR / 2;
 //		  TIM2->CCR1 = 0;
-	  }
-*/
+// }
+
 ///////////////////////////////////////////////
 
 
 /////////////jodo///////////////
-/*      HAL_ADC_Start(&hadc1);
-      HAL_ADC_PollForConversion(&hadc1, 10);
-      adc1 = HAL_ADC_GetValue(&hadc1);
-      adc2 = adc1/650;
-      htim3.Instance->CCR1=adc2;
-*/
+ for(int i=12;i<=14;i++)
+ {a[i]=RxData_From_Node3[i]-'0';}
+ int jodo = 100* a[12]  +10*a[13] +a[14];
+      htim3.Instance->CCR1=jodo;
+      if (jodo<45)
+      {
+    	  htim3.Instance->CCR1=0;
+      }
+
+
+//      printf("%d\r",jodo);
+
 ////////////////////////////////////
 
 //////////////////can fd networking tx////////////////
@@ -334,7 +436,7 @@ int main(void)
 
 ///////////////go and back (switch)/////////////////
 
-/*	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
+/*	  if(RxData[2]=0)
 		  {
 		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
@@ -346,7 +448,7 @@ int main(void)
 		  		  htim1.Instance->CCR2=99;
 		  	  }
 		  }
-	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
+	  if(RxData[2]=1)
 		  {
 		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
@@ -720,48 +822,85 @@ static void MX_FDCAN1_Init(void)
   hfdcan1.Init.DataTimeSeg1 = 5;
   hfdcan1.Init.DataTimeSeg2 = 4;
   hfdcan1.Init.MessageRAMOffset = 0;
-  hfdcan1.Init.StdFiltersNbr = 1;
+  hfdcan1.Init.StdFiltersNbr = 3;
   hfdcan1.Init.ExtFiltersNbr = 0;
   hfdcan1.Init.RxFifo0ElmtsNbr = 1;
-  hfdcan1.Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_8;
-  hfdcan1.Init.RxFifo1ElmtsNbr = 0;
-  hfdcan1.Init.RxFifo1ElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_16;
+  hfdcan1.Init.RxFifo1ElmtsNbr = 1;
+  hfdcan1.Init.RxFifo1ElmtSize = FDCAN_DATA_BYTES_16;
   hfdcan1.Init.RxBuffersNbr = 1;
-  hfdcan1.Init.RxBufferSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.RxBufferSize = FDCAN_DATA_BYTES_16;
   hfdcan1.Init.TxEventsNbr = 0;
   hfdcan1.Init.TxBuffersNbr = 0;
   hfdcan1.Init.TxFifoQueueElmtsNbr = 0;
   hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
-  hfdcan1.Init.TxElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.TxElmtSize = FDCAN_DATA_BYTES_16;
   if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK)
   {
     Error_Handler();
   }
   /* USER CODE BEGIN FDCAN1_Init 2 */
-  sFilterConfig.IdType = FDCAN_STANDARD_ID;
-        sFilterConfig.FilterIndex = 0;
-        sFilterConfig.FilterType = FDCAN_FILTER_MASK; // Ignore because FDCAN_FILTER_TO_RXBUFFE
+  	  	sFilterConfig.IdType = FDCAN_STANDARD_ID;
+        sFilterConfig.FilterIndex = 1;
+        sFilterConfig.RxBufferIndex = 1;
+        sFilterConfig.FilterType = FDCAN_FILTER_DUAL; // Ignore because FDCAN_FILTER_TO_RXBUFFE
         sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-        sFilterConfig.FilterID1 = 0; // ID Node2
+        sFilterConfig.FilterID1 = 0x33; // ID Node2
         sFilterConfig.FilterID2 = 0x7ff; // Ignore because FDCAN_FILTER_TO_RXBUFFER
-        sFilterConfig.RxBufferIndex = 0;
-        //HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig);
         if(HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK)
                {
                   Error_Handler();
                }
+//
+  	  	sFilterConfig1.IdType = FDCAN_STANDARD_ID;
+        sFilterConfig1.FilterIndex = 2;
+        sFilterConfig1.RxBufferIndex = 2;
+        sFilterConfig1.FilterType = FDCAN_FILTER_DUAL; // Ignore because FDCAN_FILTER_TO_RXBUFFE
+        sFilterConfig1.FilterConfig = FDCAN_FILTER_TO_RXFIFO1;
+        sFilterConfig1.FilterID1 = 0x11; // ID Node2
+        sFilterConfig1.FilterID2 = 0x7ff; // Ignore because FDCAN_FILTER_TO_RXBUFFER
+//
+        if(HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig1) != HAL_OK)
+        {
+           Error_Handler();
+        }
+  	  	sFilterConfig2.IdType = FDCAN_STANDARD_ID;
+        sFilterConfig2.FilterIndex = 0;
+        sFilterConfig2.RxBufferIndex = 0;
+        sFilterConfig2.FilterType = FDCAN_FILTER_DUAL; // Ignore because FDCAN_FILTER_TO_RXBUFFE
+        sFilterConfig2.FilterConfig = FDCAN_FILTER_TO_RXBUFFER;
+        sFilterConfig2.FilterID1 = 0x44; // ID Node2
+        sFilterConfig2.FilterID2 = 0x7ff; // Ignore because FDCAN_FILTER_TO_RXBUFFER
+
+        if(HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig2) != HAL_OK)
+               {
+                  Error_Handler();
+               }
+
         if(HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
               {
                 Error_Handler();
               }
 
+
+
+
+
+        if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_BUFFER_NEW_MESSAGE, 0) != HAL_OK)
+          {
+            /* Notification Error */
+            Error_Handler();
+          }
             if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK)
               {
-                /* Notification Error */
+                Error_Handler();
+              }
+            if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK)
+              {
                 Error_Handler();
               }
 
-            TxHeader.Identifier = 0x33;
+            TxHeader.Identifier = 0x22;
             TxHeader.IdType = FDCAN_STANDARD_ID;
             TxHeader.TxFrameType = FDCAN_DATA_FRAME;
             TxHeader.DataLength = FDCAN_DLC_BYTES_8;
@@ -1019,7 +1158,7 @@ static void MX_TIM3_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 50;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
