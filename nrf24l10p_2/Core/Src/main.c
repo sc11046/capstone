@@ -109,59 +109,12 @@ static void MX_TIM2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
-void delay (uint16_t time)
-{
-	__HAL_TIM_SET_COUNTER(&htim2, 0);
-	while (__HAL_TIM_GET_COUNTER (&htim2) < time);
-}
-///////////////choumpa///////////////
-/*void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // if the interrupt source is channel1
-	{
-		if (Is_First_Captured==0) // if the first value is not captured
-		{
-			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
-			Is_First_Captured = 1;  // set the first captured as true
-			// Now change the polarity to falling edge
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_FALLING);
-		}
+//void delay (uint16_t time)
+//{
+//	__HAL_TIM_SET_COUNTER(&htim2, 0);
+//	while (__HAL_TIM_GET_COUNTER (&htim2) < time);
+//}
 
-		else if (Is_First_Captured==1)   // if the first is already captured
-		{
-			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);  // read second value
-			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
-
-			if (IC_Val2 > IC_Val1)
-			{
-				Difference = IC_Val2-IC_Val1;
-			}
-
-			else if (IC_Val1 > IC_Val2)
-			{
-				Difference = (0xffff - IC_Val1) + IC_Val2;
-			}
-
-			Distance = Difference * .034/2;
-			Is_First_Captured = 0; // set it back to false
-
-			// set polarity to rising edge
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
-			__HAL_TIM_DISABLE_IT(&htim2, TIM_IT_CC1);
-		}
-	}
-}
-*/
-
-/*void HCSR04_Read (void)
-{
-	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_SET);  // pull the TRIG pin HIGH
-	delay(10);  // wait for 10 us
-	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_RESET);  // pull the TRIG pin low
-
-	__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_CC1);
-}*/
-////////////////
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -196,7 +149,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 	  }
    }
 
- }
+ }//choumpa jodo
 void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 {
    if(FDCAN1 == hfdcan->Instance)
@@ -210,7 +163,7 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 
 	  }
    }
- }
+ }//rider
 void HAL_FDCAN_RxBufferNewMessageCallback(FDCAN_HandleTypeDef *hfdcan)
 {
 
@@ -222,7 +175,7 @@ void HAL_FDCAN_RxBufferNewMessageCallback(FDCAN_HandleTypeDef *hfdcan)
         }
     }
 
-}
+}//raspi
 
 
 
@@ -285,16 +238,14 @@ int main(void)
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//led jodo
 //////////jodo////////////
 
-///////choumpa//////////
-//  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);//choumpa
-///////////////////////
+
 
 //////////////buzzer/////////
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   ////////////////////////
   int a[14];
-
-
+  int b[2];
+//nrf고치기 ,라즈베리 받을때 nrf안받도록 수정 하기 라즈베리 r,l일때 nrf쪽 따로돌게 수정
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -304,24 +255,23 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
 	  for(int i=0;i<11;i++)
 	  {a[i]=RxData_From_Node3[i]-'0';}
 
-	  int Distance1 = 100* a[0]  +10*a[1] +a[2];
+	  for(int j=0;j<3;j++)
+	  {b[j]=RxData_From_Node1[j]-'0';}
+
+	  int Distance1 = 100* a[1]  +10*a[2] +a[3];
 	  int Distance2 = 100* a[4]  +10*a[5] +a[6];
 	  int Distance3 = 100* a[8]  +10*a[9] +a[10];
-	  printf("%d",Distance1);
+	  int Distance4 = 100* b[0]  +10*b[1] +b[2];//rider
 
-//////////////choumpa//////////////
-/*  HCSR04_Read();
-  HAL_Delay(200);
-*/
+
+	  printf("    %d %d %d   ",b[0],b[1],b[2]);
+
 ///////////////////////////////
-/*	  if(HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_BUFFER1, &RxHeader, RxData_From_Node4) != HAL_OK)
-	  {
-		  Error_Handler();
-	  }
-	  HAL_Delay(100);*/
+
 ///////////////nrf//////////////
 	  if (isDataAvailable(2) == 1)
 	  	 {
@@ -331,84 +281,48 @@ int main(void)
 ///////////////////////////////////
 
 //////////////////////buzzer/////////////////
-
-
- if(Distance1<=10)
-	  {
-	  TIM2->ARR = C;
-	  TIM2->CCR1 = TIM2->ARR / 2;
-	  HAL_Delay(Distance1*10);
-	  TIM2->CCR1 = 0;
-	  HAL_Delay(100);
-	  TIM2->CCR1 = TIM2->ARR / 2;
-	  TIM2->CCR1 = 0;
-	  if(Distance1<=10)
-	  {
-		  TIM2->ARR = C;
-		  TIM2->CCR1 = TIM2->ARR / 2;
-		  TIM2->CCR1 = 0;
-		  HAL_Delay(1);
-		  TIM2->CCR1 = TIM2->ARR / 2;
-		  TIM2->CCR1 = 0;
-	  }
-	  }
- if(Distance2<=10)
-	  {
-	  TIM2->ARR = C;
-	  TIM2->CCR1 = TIM2->ARR / 2;
-	  HAL_Delay(Distance2*10);
-	  TIM2->CCR1 = 0;
-	  HAL_Delay(100);
-	  TIM2->CCR1 = TIM2->ARR / 2;
-	  TIM2->CCR1 = 0;
-	  if(Distance2<=10)
-	  	  {
-	  		  TIM2->ARR = C;
-	  		  TIM2->CCR1 = TIM2->ARR / 2;
-	  		  TIM2->CCR1 = 0;
-	  		HAL_Delay(1);
-	  		TIM2->CCR1 = TIM2->ARR / 2;
-	  		TIM2->CCR1 = 0;
-	  	  }
-	  }
- if(Distance3<=10)
-	  {
-	  TIM2->ARR = C;
-	  TIM2->CCR1 = TIM2->ARR / 2;
-	  HAL_Delay(Distance3*10);
-	  TIM2->CCR1 = 0;
-	  HAL_Delay(100);
-	  TIM2->CCR1 = TIM2->ARR / 2;
-	  TIM2->CCR1 = 0;
-	  if(Distance3<=10)
-	  	  {
-	  		  TIM2->ARR = C;
-	  		  TIM2->CCR1 = TIM2->ARR / 2;
-	  		  TIM2->CCR1 = 0;
-	  		HAL_Delay(1);
-	  		TIM2->CCR1 = TIM2->ARR / 2;
-	  		TIM2->CCR1 = 0;
-	  	  }
-	  }
+//for (int i=0;i<5;i++){
+//	  TIM2->ARR = C;
+//	  TIM2->CCR1 = TIM2->ARR/2 ;
+//	  HAL_Delay(500);
+//	  TIM2->CCR1 = 0;
+//	  HAL_Delay(100);
+//	  }
 
 
 
-//	  for(int i=0; i < 5; i++) {
-//		  TIM2->ARR = C;
-//		  TIM2->CCR1 = TIM2->ARR / 2;
-//		  HAL_Delay(100);
-//		  TIM2->CCR1 = 0;
-//		  HAL_Delay(100);
-//		  TIM2->CCR1 = TIM2->ARR / 2;
-//		  TIM2->CCR1 = 0;
-// }
+	  if(Distance1<=15)
+	 	  {
+	 	  TIM2->ARR = C;
+	 	  TIM2->CCR1 = TIM2->ARR / 2;
+	 	  HAL_Delay(50);
+	 	  TIM2->CCR1 = 0;
+	 	  HAL_Delay(50);
+	 	  }
 
-///////////////////////////////////////////////
+	  if(Distance2<=15)
+	 	  {
+	 	  TIM2->ARR = C;
+	 	  TIM2->CCR1 = TIM2->ARR / 2;
+	 	  HAL_Delay(50);
+	 	  TIM2->CCR1 = 0;
+	 	  HAL_Delay(50);
+	 	  }
+
+	  if(Distance3<=15)
+	 	  {
+	 	  TIM2->ARR = C;
+	 	  TIM2->CCR1 = TIM2->ARR / 2;
+	 	  HAL_Delay(50);
+	 	  TIM2->CCR1 = 0;
+	 	  HAL_Delay(50);
+	 	  }
 
 
-/////////////jodo///////////////
- for(int i=12;i<=14;i++)
- {a[i]=RxData_From_Node3[i]-'0';}
+ /////////////jodo///////////////
+
+ for(int l=12;l<=14;l++)
+ {a[l]=RxData_From_Node3[l]-'0';}
  int jodo = 100* a[12]  +10*a[13] +a[14];
       htim3.Instance->CCR1=jodo;
       if (jodo<45)
@@ -416,209 +330,217 @@ int main(void)
     	  htim3.Instance->CCR1=0;
       }
 
+      ////////////////////////////////////
 
-//      printf("%d\r",jodo);
+///////////////////////////////////////////////
 
-////////////////////////////////////
 
-//////////////////can fd networking tx////////////////
-/*sprintf ((char *)TxData_Node3_To_Node1,"%d",Distance);
-     sprintf ((char *)TxData_Node3_To_Node1,"1234");
-     if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData_Node3_To_Node1)!= HAL_OK)
-               {
 
-         //Error_Handler();
 
-               }
-     HAL_Delay(200);
-     */
-//////////////////////////////////////////
 
 ///////////////go and back (switch)/////////////////
 
-/*	  if(RxData[2]=0)
-		  {
-		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
-		  htim1.Instance->CCR1=RxData[0];
-		  htim1.Instance->CCR2=RxData[0];
-		  if(RxData[0]>=100)
-		  	  {
-		  		  htim1.Instance->CCR1=99;
-		  		  htim1.Instance->CCR2=99;
-		  	  }
-		  }
-	  if(RxData[2]=1)
-		  {
-		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
-		  htim1.Instance->CCR1=RxData[0];
-		  htim1.Instance->CCR2=RxData[0];
-		  if(RxData[0]>=100)
-		  	  {
-		  		  htim1.Instance->CCR1=99;
-		  		  htim1.Instance->CCR2=99;
-		  	  }
-		  }*/
+//	  if(RxData[2]==0)
+//		  {
+//		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
+//		  htim1.Instance->CCR1=RxData[0];
+//		  htim1.Instance->CCR2=RxData[0];
+//		  if(RxData[0]>=100)
+//		  	  {
+//		  		  htim1.Instance->CCR1=99;
+//		  		  htim1.Instance->CCR2=99;
+//		  	  }
+//		  }
+//	  if(RxData[2]==1)
+//		  {
+//		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
+//		  htim1.Instance->CCR1=RxData[0];
+//		  htim1.Instance->CCR2=RxData[0];
+//		  if(RxData[0]>=100)
+//		  	  {
+//		  		  htim1.Instance->CCR1=99;
+//		  		  htim1.Instance->CCR2=99;
+//		  	  }
+//		  }
 
+/////////////////////////////////////////////////////
 
 ///////////////////////nrf networking and direction//////////////////
-/*
-		  if (RxData[1]  <=40)
-			  {
-				  while (RxData[1]  <= 40)
+
+	if(RxData[3]==0)
+	{
+
+
+			  if (RxData[1]  <=40)
 				  {
-					  if (isDataAvailable(2) == 1)
+
+
+					  while (RxData[1]  <= 40)
 					  {
-						  NRF24_Receive(RxData);
-					  }
 
-					  htim1.Instance->CCR3 = 80;
-					  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
-					  HAL_Delay(100);
-					  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
-						  {
-						  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
-						  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
-						  htim1.Instance->CCR1=RxData[0];
-						  htim1.Instance->CCR2=RxData[0];
-						  if(RxData[0]>=100)
-						  	  {
-						  		  htim1.Instance->CCR1=99;
-						  		  htim1.Instance->CCR2=99;
-						  	  }
-						  }
-					  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
-						  {
-						  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
-						  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
-						  htim1.Instance->CCR1=RxData[0];
-						  htim1.Instance->CCR2=RxData[0];
-						  if(RxData[0]>=100)
-						  	  {
-						  		  htim1.Instance->CCR1=99;
-						  		  htim1.Instance->CCR2=99;
-						  	  }
-						  }
-
-
-					  if(41<=RxData[1]&&RxData[1]<=80)
-					  {
-						  htim1.Instance->CCR3 = 90;
-						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
-						  HAL_Delay(200);
-						  htim1.Instance->CCR3 = 0;
-					  }
-					  if(RxData_From_Node2[0]=='R')
-					  {
-						 htim1.Instance->CCR3 = 50;
-						 HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
-						HAL_Delay(200);
-					  }
-				  }
-
-
-			  }
-
-		  if (RxData[1] > 85)
-				  {
-					  while (RxData[1] > 85)
-					  {
 						  if (isDataAvailable(2) == 1)
 						  {
 							  NRF24_Receive(RxData);
 						  }
 
 						  htim1.Instance->CCR3 = 80;
-						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
+						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
 						  HAL_Delay(100);
-						  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
+						  if(RxData[2]==0)
 							  {
 							  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
 							  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
 							  htim1.Instance->CCR1=RxData[0];
 							  htim1.Instance->CCR2=RxData[0];
 							  if(RxData[0]>=100)
-							  	  {
-							  		  htim1.Instance->CCR1=99;
-							  		  htim1.Instance->CCR2=99;
-							  	  }
+								  {
+									  htim1.Instance->CCR1=99;
+									  htim1.Instance->CCR2=99;
+								  }
 							  }
-						  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
+						  if(RxData[2]==1)
 							  {
 							  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
 							  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
 							  htim1.Instance->CCR1=RxData[0];
 							  htim1.Instance->CCR2=RxData[0];
 							  if(RxData[0]>=100)
-							  	  {
-							  		  htim1.Instance->CCR1=99;
-							  		  htim1.Instance->CCR2=99;
-							  	  }
+								  {
+									  htim1.Instance->CCR1=99;
+									  htim1.Instance->CCR2=99;
+								  }
 							  }
 
-						  if(41<=RxData[1]&&RxData[1]<=85)
+						  if(41<=RxData[1]&&RxData[1]<=80)
 						  {
 							  htim1.Instance->CCR3 = 90;
-							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
+							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
 							  HAL_Delay(200);
 							  htim1.Instance->CCR3 = 0;
 						  }
-						if(RxData_From_Node2[0]=='L')
-										  {
-											 htim1.Instance->CCR3 = 50;
-											 HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
-											HAL_Delay(200);
 
-																  }
+
 					  }
 
 
-				  }*/
+				  }
+
+			  if (RxData[1] > 85)
+					  {
+
+						  while (RxData[1] > 85)
+						  {
+
+							  if (isDataAvailable(2) == 1)
+							  {
+								  NRF24_Receive(RxData);
+							  }
+							  htim1.Instance->CCR3 = 80;
+							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
+							  HAL_Delay(100);
+							  if(RxData[2]==0)
+								  {
+								  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
+								  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
+								  htim1.Instance->CCR1=RxData[0];
+								  htim1.Instance->CCR2=RxData[0];
+								  if(RxData[0]>=100)
+									  {
+										  htim1.Instance->CCR1=99;
+										  htim1.Instance->CCR2=99;
+									  }
+								  }
+							  if(RxData[2]==1)
+								  {
+								  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
+								  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
+								  htim1.Instance->CCR1=RxData[0];
+								  htim1.Instance->CCR2=RxData[0];
+								  if(RxData[0]>=100)
+									  {
+										  htim1.Instance->CCR1=99;
+										  htim1.Instance->CCR2=99;
+									  }
+								  }
+
+							  if(41<=RxData[1]&&RxData[1]<=85)
+							  {
+								  htim1.Instance->CCR3 = 90;
+								  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
+								  HAL_Delay(200);
+								  htim1.Instance->CCR3 = 0;
+							  }
+						  }
+					  }
+
+
+
+	  }
 ////////////////////////////////////////////////////////////
 
 ///////////////go and back /////////////////
-/*	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==0)
-		  	  		  {
-		  	  		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
-		  	  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
-		  	  		  htim1.Instance->CCR1=RxData[0];
-		  	  		  htim1.Instance->CCR2=RxData[0];
-		  	  		  if(RxData[0]>=100)
-		  	  		  	  {
-		  	  		  		  htim1.Instance->CCR1=99;
-		  	  		  		  htim1.Instance->CCR2=99;
-		  	  		  	  }
-		  	  		  }
-		  	  	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
-		  	  		  {
-		  	  		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
-		  	  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
-		  	  		  htim1.Instance->CCR1=RxData[0];
-		  	  		  htim1.Instance->CCR2=RxData[0];
-		  	  		  if(RxData[0]>=100)
-		  	  		  	  {
-		  	  		  		  htim1.Instance->CCR1=99;
-		  	  		  		  htim1.Instance->CCR2=99;
-		  	  		  	  }
-		  	  		  }
-*/
+
+						if(RxData[2]==0)
+							  {
+							  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 0);
+							  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,0);
+							  htim1.Instance->CCR1=RxData[0];
+							  htim1.Instance->CCR2=RxData[0];
+							  if(RxData[0]>=100)
+								  {
+									  htim1.Instance->CCR1=99;
+									  htim1.Instance->CCR2=99;
+								  }
+							  //////////////ridar///////////////
+							  	  if(Distance4<=20)
+							  	  {
+							  		  htim1.Instance->CCR1=0;
+							  		  htim1.Instance->CCR2=0;
+							  	  }
+
+							  }
+						  if(RxData[2]==1)
+							  {
+							  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, 1);
+							  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,1);
+							  htim1.Instance->CCR1=RxData[0];
+							  htim1.Instance->CCR2=RxData[0];
+							  if(RxData[0]>=100)
+								  {
+									  htim1.Instance->CCR1=99;
+									  htim1.Instance->CCR2=99;
+								  }
+							  //////////////ridar///////////////
+							  	  if(Distance4<=20)
+							  	  {
+							  		  htim1.Instance->CCR1=0;
+							  		  htim1.Instance->CCR2=0;
+							  	  }
+
+							  }
+
+
 ////////////////////////////////////////////////////
 
 /////////////////can fd raspi and direction ////////////////////
-/*		  	  if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0)==1)
+		  	  if(RxData[3]==1)
 		  	  {
-		  		  if (RxData_From_Node2[0]=='L')
+
+
+		  		  if (RxData_From_Node4[0]=='L')
 		  				  {
-		  					  while (RxData_From_Node2[0]=='L')
+		  					  while (RxData_From_Node4[0]=='L')
 		  					  {
+
 		  						  // left motor
-		  						  htim1.Instance->CCR3 = 50;
+		  						  htim1.Instance->CCR3 = 90;
 		  						  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
 		  						  HAL_Delay(100);
 
 		  						  // straight
-		  						  if(RxData_From_Node2[0]=='G')
+		  						  if(RxData_From_Node4[0]=='G')
 		  						  {
 		  							  htim1.Instance->CCR3 = 90;
 		  							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
@@ -629,20 +551,26 @@ int main(void)
 		  						  {
 		  							  break;
 		  						  }
+
+
 		  					  }
 
 		  				  }
 
-		  			  if (RxData_From_Node2[0]=='R')
+		  			  if (RxData_From_Node4[0]=='R')
 		  					  {
-		  						  while (RxData_From_Node2[0]=='R')
+
+
+
+		  						  while (RxData_From_Node4[0]=='R')
 		  						  {
+
 		  							  // right motor
-		  							  htim1.Instance->CCR3 = 50;
+		  							  htim1.Instance->CCR3 = 90;
 		  							  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 1);
 		  							  HAL_Delay(100);
 
-		  							  if(RxData_From_Node2[0]=='G')
+		  							  if(RxData_From_Node4[0]=='G')
 		  							  {
 		  								  htim1.Instance->CCR3 = 90;
 		  								  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, 0);
@@ -654,12 +582,13 @@ int main(void)
 		  								  break;
 		  							  }
 
+
 		  						  }
 
 
 		  					  }
 
-		  	  }*/
+		  	  }
 ///////////////////////////////////////////////////////////////////
 
 	}
